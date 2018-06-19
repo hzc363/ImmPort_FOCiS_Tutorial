@@ -1,0 +1,138 @@
+library(dplyr)
+library(MetaCyto)
+##### Step 1: unzip data #####
+zip_file = list.files("Data/SDY311",pattern = "DR26_Tab.zip",full.names = T,recursive = T)
+unzip(zip_file,exdir ="Data/SDY311" )
+
+zip_file = list.files("Data/SDY113",pattern = "DR26_Tab.zip",full.names = T,recursive = T)
+unzip(zip_file,exdir ="Data/SDY113" )
+
+zip_file = list.files("Data/SDY515",pattern = "DR26_Tab.zip",full.names = T,recursive = T)
+unzip(zip_file,exdir ="Data/SDY515" )
+
+
+##### Step 2: Parse CMV data #####
+# read CMV data
+fn = list.files("Data",pattern = "lab_test.txt", full.names = T, recursive =  T)
+lab_test = lapply(fn, function(x){read.table(file = x, header = T, sep = "\t")})
+lab_test = Reduce(rbind,lab_test)
+lab_test = subset(lab_test,lab_test$NAME_REPORTED=="CMV Ab")
+lab_test = mutate(lab_test,"CMV_Positive"=(RESULT_VALUE_PREFERRED>0))
+boxplot(RESULT_VALUE_REPORTED~CMV_Positive, data = lab_test)
+# Map biosample to subjects
+fn = list.files("Data",pattern = "^biosample.txt", full.names = T, recursive =  T)
+biosample = lapply(fn, function(x){read.table(file = x, header = T, sep = "\t")})
+biosample = Reduce(rbind,biosample)
+lab_test = inner_join(lab_test,biosample[,c("BIOSAMPLE_ACCESSION","SUBJECT_ACCESSION")])
+
+##### Step 3: collect subject information #####
+meta_data_SDY113=read.table("Data/SDY113/SDY113-DR26_Subject_2_CyTOF_result.txt",sep='\t',header=T)
+meta_data_SDY311=read.table("Data/SDY311/SDY311-DR26_Subject_2_CyTOF_result.txt",sep='\t',header=T)
+meta_data_SDY515=read.table("Data/SDY515/SDY515-DR26_Subject_2_CyTOF_result.txt",sep='\t',header=T)
+
+# SDY113
+sample_info_SDY113=sampleInfoParser(metaData=meta_data_SDY113,
+                                    studyFolder="Data/SDY113",
+                                    assay="CyTOF",
+                                    fcsCol="File.Name",
+                                    attrCol=c("Subject.Age","Gender","Subject.Accession"))
+
+# SDY311
+sample_info_SDY311=sampleInfoParser(metaData=meta_data_SDY311,
+                                    studyFolder="Data/SDY311",
+                                    assay="CyTOF",
+                                    fcsCol="File.Name",
+                                    attrCol=c("Subject.Age","Gender","Subject.Accession"))
+
+# SDY515
+sample_info_SDY515=sampleInfoParser(metaData=meta_data_SDY515,
+                                    studyFolder="Data/SDY515",
+                                    assay="CyTOF",
+                                    fcsCol="File.Name",
+                                    attrCol=c("Subject.Age","Gender","Subject.Accession"))
+# combine data
+sample_info=rbind(sample_info_SDY113,sample_info_SDY311,sample_info_SDY515)
+
+##### Step 4: collect fcs files #####
+# SDY113
+fcs_info_SDY113=fcsInfoParser(metaData=meta_data_SDY113,
+                              studyFolder="Data/SDY113",
+                              fcsCol="File.Name",
+                              assay="CyTOF")
+
+# SDY311
+fcs_info_SDY311=fcsInfoParser(metaData=meta_data_SDY311,
+                              studyFolder="Data/SDY311",
+                              fcsCol="File.Name",
+                              assay="CyTOF")
+
+# SDY515
+fcs_info_SDY515=fcsInfoParser(metaData=meta_data_SDY515,
+                              studyFolder="Data/SDY515",
+                              fcsCol="File.Name",
+                              assay="CyTOF")
+# combine data
+fcs_info=rbind(fcs_info_SDY113,fcs_info_SDY311,fcs_info_SDY515)
+
+##### Step 5: Preprocess fcs files using MetaCyto #####
+preprocessing.batch(inputMeta=fcs_info,
+                    assay="CyTOF",
+                    b=1/5,
+                    outpath="Result/preprocess_output",
+                    excludeTransformParameters=c("Time","Cell_length"))
+
+##### Step 6: Unify Marker Names #####
+# look at marker names
+files=list.files("Result",pattern="processed_sample",recursive=T,full.names=T)
+panel_info=collectData(files,longform=F)
+PS=panelSummary(panel_info,"Result",cluster=F,width=40,height=20)
+
+# change marker name
+old_names=sort(rownames(PS))
+new_names = gsub("\\(.*","",old_names)
+nameUpdator(oldNames=old_names,newNames=new_names,files)
+
+# check marker name again
+panel_info=collectData(files,longform=F)
+PS=panelSummary(panel_info,"Result",cluster=F,width=40,height=20)
+
+
+##### Step 7: Quantify cell subsets using MetaCyto #####
+cell_definitions = read.csv("Data/cell_definition.csv")
+searchCluster.batch(preprocessOutputFolder="Result/preprocess_output",
+                    outpath="Result/search_output",
+                    clusterLabel=cell_definitions$label,
+                    ifPlot = F)
+
+##### Step 8: combine data #####
+# combine cell subset data with subject data
+sample_info = left_join(sample_info,lab_test[,c("SUBJECT_ACCESSION","CMV_Positive")],
+                        by = c("Subject.Accession"="SUBJECT_ACCESSION"))
+files=list.files("Result/search_output",pattern="cluster_stats_in_each_sample",recursive=T,full.names=T)
+fcs_stats=collectData(files,longform=T)
+all_data=inner_join(fcs_stats,sample_info,by="fcs_files")
+
+##### Step 9: Evaluate the impact of CMV on cell subsets #####
+# See the fraction of what clusters are affected by age (while controlling for GENDER)
+GA=glmAnalysis(value="value",variableOfInterst="CMV_Positive",parameter="fraction",
+               otherVariables=c("Gender","Subject.Age"),studyID="study_id",label="label",
+               data=all_data,CILevel=0.95,ifScale=c(T,F))
+GA=GA[order(GA$Effect_size),]
+
+# plot the results
+plotGA(GA)
+
+
+# Let's take a closer look to see if CCR7+ CD8 T cell is affected by age (while controlling for GENDER)
+L="CD14-|CD33-|CD3+|CD56+"
+dat=subset(all_data,all_data$parameter_name=="fraction"&all_data$label==L)
+MA=metaAnalysis(value="value",variableOfInterst="CMV_Positive",main=L,
+                otherVariables=c("Gender","Subject.Age"),studyID="study_id",
+                data=dat,CILevel=0.95,ifScale=c(T,F))
+
+
+L="CD14-|CD33-|CD3-|CD20-|CD27+|CD38+"
+dat=subset(all_data,all_data$parameter_name=="fraction"&all_data$label==L)
+MA=metaAnalysis(value="value",variableOfInterst="CMV_Positive",main=L,
+                otherVariables=c("Gender","Subject.Age"),studyID="study_id",
+                data=dat,CILevel=0.95,ifScale=c(T,F))

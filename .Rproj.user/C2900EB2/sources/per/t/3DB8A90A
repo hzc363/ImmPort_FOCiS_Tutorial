@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1526919085439.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "2|25|12|0|\n13|29|26|0|\n27|42|54|0|\n55|32|75|0|\n76|50|82|0|\n83|33|98|0|\n99|51|105|0|\n106|27|113|0|\n114|57|138|0|\n",
+    "hash" : "1548715386",
+    "id" : "3DB8A90A",
+    "lastKnownWriteTime" : 1526944315,
+    "last_content_update" : 1526944315321,
+    "path" : "~/Desktop/Local_Projects/CMV_ImmPort/CMV_Focuis/Code/Focis_tutorial.R",
+    "project_path" : "Code/Focis_tutorial.R",
+    "properties" : {
+        "cursorPosition" : "2,0",
+        "scrollLine" : "0",
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

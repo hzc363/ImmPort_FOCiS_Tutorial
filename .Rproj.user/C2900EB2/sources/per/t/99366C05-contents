@@ -1,0 +1,50 @@
+---
+title: "Meta-analysis Reveals the Impact of CMV on Immune Cells"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+library(dplyr)
+library(MetaCyto)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+CMV is a β-herpesvirus that infects 40 – 100 % of population worldwide in a latent form. It not only can cause substantial morbidity and mortality in immune-compromised patients, but also alters the immune response in healthy individuals. In this tutorial, we will perform a meta-analysis to reveal the effect of latent cytomegalovirus (CMV) on the circulating immune cells. The meta-analysis will use data from three studies publically available in the ImmPort database (SDY113, SDY311 and SDY515). This tutorial is designed to help you gain hands-on experience in the follow areas:
+
+1. R programing
+2. Data wrangling with ImmPort data
+3. Automated cell gating for CyTOF data
+4. Meta-analysis
+
+## Overview of the meta-analysis
+In this tutorial, we will identify the effect of CMV infection on circulating immune cells while controling for the effect of other factors such as age and gender. To achieve our goal, we need the following three types of information for each subject: CMV status, demographical data and the quantification of cells in the pripheral blood.  We will parse the required information from ImmPort data, aggreate them together and perform statistical analysis to reveal the effect of CMV infection. The whole workflow can be divided into 9 steps (shown in Figure 1). 
+
+```{r,echo=FALSE,results='asis',message=FALSE,warning=FALSE}
+knitr::include_graphics("Data/Figure_1.jpg")
+cat("**\n Fig.1: The workflow of the meta-analysis to reveal the impact of CMV on immune cells.**")
+```
+
+
+
+
+
+
+
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
